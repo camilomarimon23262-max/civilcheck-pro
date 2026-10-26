@@ -61,7 +61,8 @@ def obtener_conexion():
 def inicializar_bd():
     conn = obtener_conexion()
     cursor = conn.cursor()
-    # Tabla de usuarios
+    # Forzar actualización recreando la tabla de usuarios si no tiene la estructura
+    cursor.execute("DROP TABLE IF EXISTS usuarios;")
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS usuarios (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -69,7 +70,6 @@ def inicializar_bd():
             password TEXT NOT NULL
         )
     """)
-    # Tabla de inspecciones
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS inspecciones (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -82,7 +82,6 @@ def inicializar_bd():
             ruta_pdf TEXT NOT NULL
         )
     """)
-    # Tabla de espacios
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS espacios_inspeccion (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
