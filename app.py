@@ -8,6 +8,7 @@ import os
 import sys
 import subprocess
 import base64
+import hashlib
 
 # Instalar automáticamente la librería de PDF (fpdf2) si no está instalada
 try:
@@ -23,7 +24,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# Estilos visuales para hacer la interfaz más clara, grande y fácil de usar en celular y PC
+# Estilos visuales para hacer la interfaz más clara, grande y fácil de usar
 st.markdown("""
     <style>
     .stButton > button {
@@ -60,6 +61,15 @@ def obtener_conexion():
 def inicializar_bd():
     conn = obtener_conexion()
     cursor = conn.cursor()
+    # Tabla de usuarios
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS usuarios (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            usuario TEXT UNIQUE NOT NULL,
+            password TEXT NOT NULL
+        )
+    """)
+    # Tabla de inspecciones
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS inspecciones (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -72,6 +82,7 @@ def inicializar_bd():
             ruta_pdf TEXT NOT NULL
         )
     """)
+    # Tabla de espacios
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS espacios_inspeccion (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -92,16 +103,78 @@ def inicializar_bd():
 
 inicializar_bd()
 
+def hash_password(password):
+    return hashlib.sha256(password.encode()).hexdigest()
+
+# ================= CONTROL DE SESIÓN DE USUARIO =================
+if "usuario_logueado" not in st.session_state:
+    st.session_state.usuario_logueado = None
+
+# Si el usuario NO ha iniciado sesión, mostrar pantalla de autenticación
+if not st.session_state.usuario_logueado:
+    st.markdown("<br><br>", unsafe_allow_html=True)
+    col1, col2, col3 = st.columns([1, 1.3, 1])
+    with col2:
+        with st.container(border=True):
+            st.markdown("<h2 style='text-align: center;'>🏗️ CivilCheck Pro</h2>", unsafe_allow_html=True)
+            st.markdown("<p style='text-align: center; color: gray;'>Sistema de Inspección Técnica y Patología Estructural</p>", unsafe_allow_html=True)
+            
+            tab_login, tab_registro = st.tabs(["🔑 Iniciar Sesión", "➕ Crear Cuenta Nueva"])
+
+            with tab_login:
+                with st.form("form_login"):
+                    user_input = st.text_input("Usuario", placeholder="Ingresa tu usuario")
+                    pass_input = st.text_input("Contraseña", type="password", placeholder="Ingresa tu contraseña")
+                    btn_ingresar = st.form_submit_button("🚀 Entrar a la Plataforma", type="primary", use_container_width=True)
+
+                    if btn_ingresar:
+                        if not user_input.strip() or not pass_input.strip():
+                            st.error("⚠️ Por favor completa usuario y contraseña.")
+                        else:
+                            conn = obtener_conexion()
+                            cursor = conn.cursor()
+                            cursor.execute("SELECT password FROM usuarios WHERE usuario = ?", (user_input.strip(),))
+                            resultado = cursor.fetchone()
+                            conn.close()
+
+                            if resultado and resultado[0] == hash_password(pass_input):
+                                st.session_state.usuario_logueado = user_input.strip()
+                                st.success("✅ ¡Bienvenido!")
+                                st.rerun()
+                            else:
+                                st.error("❌ Usuario o contraseña incorrectos.")
+
+            with tab_registro:
+                with st.form("form_registro"):
+                    new_user = st.text_input("Nuevo Usuario", placeholder="Elige un nombre de usuario")
+                    new_pass = st.text_input("Nueva Contraseña", type="password", placeholder="Elige una contraseña")
+                    btn_crear = st.form_submit_button("✨ Registrar Cuenta", use_container_width=True)
+
+                    if btn_crear:
+                        if not new_user.strip() or not new_pass.strip():
+                            st.error("⚠️ Completa los campos para registrarte.")
+                        else:
+                            try:
+                                conn = obtener_conexion()
+                                cursor = conn.cursor()
+                                cursor.execute("INSERT INTO usuarios (usuario, password) VALUES (?, ?)", 
+                                             (new_user.strip(), hash_password(new_pass)))
+                                conn.commit()
+                                conn.close()
+                                st.success("🎉 Cuenta creada con éxito. Ya puedes iniciar sesión en la otra pestaña.")
+                            except sqlite3.IntegrityError:
+                                st.error("⚠️ Ese nombre de usuario ya existe. Prueba con otro.")
+    st.stop()  # Detiene la ejecución aquí hasta que el usuario inicie sesión
+
+
 # ================= GUARDADO DE IMAGEN EN ALTA CALIDAD =================
 def guardar_imagen_alta_calidad(imagen_pil, ruta_destino):
     """Guarda la fotografía conservando la máxima nitidez y detalle para inspección de fisuras."""
     if imagen_pil.mode in ("RGBA", "P"):
         imagen_pil = imagen_pil.convert("RGB")
     
-    # Mantener alta resolución (hasta 2560px en su lado mayor sin deformar)
     imagen_pil.thumbnail((2560, 2560), Image.Resampling.LANCZOS)
     
-    # subsampling=0 evita que se difuminen los bordes finos de las grietas
     imagen_pil.save(
         ruta_destino,
         format="JPEG",
@@ -113,7 +186,6 @@ def guardar_imagen_alta_calidad(imagen_pil, ruta_destino):
 
 # ================= FUNCIONES PARA ABRIR Y VER EL ARCHIVO PDF =================
 def abrir_pdf_en_computador(ruta_pdf):
-    """Abre el archivo PDF directamente con el visor predeterminado del sistema local."""
     ruta_absoluta = os.path.abspath(ruta_pdf)
     if os.path.exists(ruta_absoluta):
         try:
@@ -129,7 +201,6 @@ def abrir_pdf_en_computador(ruta_pdf):
     return False
 
 def mostrar_visor_pdf_en_pantalla(ruta_pdf):
-    """Muestra el archivo PDF incrustado directamente dentro de la aplicación."""
     if os.path.exists(ruta_pdf):
         with open(ruta_pdf, "rb") as f:
             base64_pdf = base64.b64encode(f.read()).decode("utf-8")
@@ -170,7 +241,7 @@ def generar_pdf_inspeccion(proyecto, direccion, inspector, fecha_insp, estado, l
     pdf.cell(0, 6, limpiar_texto_pdf(f"Total de zonas registradas: {len(lista_espacios)}"), ln=True)
     pdf.ln(6)
 
-    # 2. Detalle por Cuarto / Fachada (Sin texto de nitidez y con imagen más grande y clara)
+    # 2. Detalle por Cuarto / Fachada
     pdf.set_font("Helvetica", "B", 11)
     pdf.cell(0, 8, limpiar_texto_pdf("2. REGISTRO FOTOGRAFICO Y MEDICIONES POR ZONA / FACHADA"), ln=True, fill=True)
     pdf.ln(4)
@@ -202,7 +273,6 @@ def generar_pdf_inspeccion(proyecto, direccion, inspector, fecha_insp, estado, l
         if os.path.exists(item["ruta_foto"]):
             try:
                 pdf.ln(3)
-                # Imagen más amplia (125 mm) para apreciar claramente los detalles en el PDF
                 pdf.image(item["ruta_foto"], w=125)
             except Exception:
                 pdf.cell(0, 6, limpiar_texto_pdf("[No se pudo incrustar la imagen]"), ln=True)
@@ -287,7 +357,7 @@ if "menu_activo" not in st.session_state:
 # ================= BARRA LATERAL =================
 with st.sidebar:
     st.title("🏗️ CivilCheck")
-    st.caption("Sistema Fácil de Inspección Técnica")
+    st.caption(f"👤 Usuario: **{st.session_state.usuario_logueado}**")
     st.divider()
 
     menu = st.radio(
@@ -302,10 +372,10 @@ with st.sidebar:
     st.session_state.menu_activo = menu
 
     st.divider()
-    st.info(f"🏠 **Zonas guardadas en este informe:** {len(st.session_state.cuartos_actuales)}")
+    st.info(f"🏠 **Zonas guardadas:** {len(st.session_state.cuartos_actuales)}")
 
     if len(st.session_state.cuartos_actuales) > 0:
-        if st.button("🗑️ Borrar todo y empezar de cero", use_container_width=True):
+        if st.button("🗑️ Borrar borrador actual", use_container_width=True):
             st.session_state.cuartos_actuales = []
             st.session_state.atributos_extra = []
             st.session_state.contador_cuarto = 1
@@ -313,12 +383,16 @@ with st.sidebar:
             st.session_state.cam_id += 1
             st.rerun()
 
+    st.divider()
+    if st.button("🚪 Cerrar Sesión", use_container_width=True):
+        st.session_state.usuario_logueado = None
+        st.rerun()
+
 # ================= VISTA 1: NUEVA INSPECCIÓN CON CÁMARA =================
 if menu == "📸 Nueva Inspección (Cámara)":
     st.title("📸 Crear Informe de Inspección")
     st.caption("Sigue los 3 pasos en orden para armar y descargar tu informe en PDF.")
 
-    # Aviso destacado cuando se acaba de generar un PDF
     if "ultimo_pdf" in st.session_state and os.path.exists(st.session_state.ultimo_pdf):
         with st.container(border=True):
             st.success("🎉 **¡Tu informe PDF se ha creado con éxito!** Elige una opción abajo:")
@@ -327,7 +401,7 @@ if menu == "📸 Nueva Inspección (Cámara)":
             with col_op1:
                 with open(st.session_state.ultimo_pdf, "rb") as f_pdf:
                     st.download_button(
-                        label="📥 1. DESCARGAR PDF AL CELULAR / PC",
+                        label="📥 1. DESCARGAR PDF",
                         data=f_pdf,
                         file_name=os.path.basename(st.session_state.ultimo_pdf),
                         mime="application/pdf",
@@ -336,11 +410,11 @@ if menu == "📸 Nueva Inspección (Cámara)":
                     )
 
             with col_op2:
-                if st.button("👁️ 2. Ver PDF aquí en pantalla", use_container_width=True):
+                if st.button("👁️ 2. Ver PDF en pantalla", use_container_width=True):
                     st.session_state.ver_pdf_actual = not st.session_state.ver_pdf_actual
 
             with col_op3:
-                if st.button("➕ 3. Empezar un informe nuevo", use_container_width=True):
+                if st.button("➕ 3. Empezar informe nuevo", use_container_width=True):
                     del st.session_state.ultimo_pdf
                     st.session_state.ver_pdf_actual = False
                     st.rerun()
@@ -353,7 +427,6 @@ if menu == "📸 Nueva Inspección (Cámara)":
     if editando:
         st.warning(f"✏️ **Modo Corrección:** Estás modificando los datos o la foto de **{editando['nombre_espacio']}**.")
 
-    # --- PASO 1 Y PASO 2 EN TARJETAS CLARAS ---
     col_cam, col_datos = st.columns([1.1, 1.2])
 
     with col_cam:
@@ -369,12 +442,12 @@ if menu == "📸 Nueva Inspección (Cámara)":
             archivo_imagen = None
             if metodo_foto == "📷 Tomar foto con la Cámara":
                 archivo_imagen = st.camera_input(
-                    "Apunta a la fisura o muro y presiona el botón para capturar",
+                    "Apunta a la fisura o muro y presiona capturar",
                     key=f"camara_{st.session_state.cam_id}"
                 )
             else:
                 archivo_imagen = st.file_uploader(
-                    "Toca aquí para elegir una imagen de tu celular o PC",
+                    "Elige una imagen de tu galería o PC",
                     type=["jpg", "jpeg", "png", "webp"],
                     key=f"uploader_{st.session_state.cam_id}"
                 )
@@ -383,13 +456,13 @@ if menu == "📸 Nueva Inspección (Cámara)":
             if archivo_imagen is not None:
                 imagen_lista_pil = Image.open(archivo_imagen).convert("RGB")
             elif editando and os.path.exists(editando["ruta_foto"]):
-                st.caption("📷 *Fotografía actual (puedes tomar otra arriba si deseas cambiarla):*")
+                st.caption("📷 *Fotografía actual:*")
                 st.image(editando["ruta_foto"], use_container_width=True)
                 imagen_lista_pil = Image.open(editando["ruta_foto"]).convert("RGB")
 
             if imagen_lista_pil is not None:
                 st.success("✅ Fotografía cargada en alta resolución.")
-                if st.button("🔄 Tomar o elegir otra foto diferente", use_container_width=True):
+                if st.button("🔄 Tomar otra foto diferente", use_container_width=True):
                     if editando:
                         st.session_state.datos_edicion["ruta_foto"] = ""
                     st.session_state.cam_id += 1
@@ -406,13 +479,13 @@ if menu == "📸 Nueva Inspección (Cámara)":
             nombre_espacio = st.text_input(
                 "1️⃣ Nombre del cuarto o lugar (Obligatorio) *",
                 value=valor_nombre,
-                placeholder="Ej: Sala, Alcoba Principal, Fachada..."
+                placeholder="Ej: Sala, Alcoba Principal..."
             )
 
             c1, c2 = st.columns(2)
             with c1:
                 longitud_aprox = st.text_input(
-                    "2️⃣ Longitud o medida de la fisura (Obligatorio) *",
+                    "2️⃣ Longitud o medida (Obligatorio) *",
                     value=valor_longitud,
                     placeholder="Ej: 1.50 m / 45 cm"
                 )
@@ -434,10 +507,10 @@ if menu == "📸 Nueva Inspección (Cámara)":
                 "4️⃣ Observaciones o descripción (Opcional):",
                 value=valor_obs,
                 height=80,
-                placeholder="Escribe aquí cualquier detalle: si hay humedad, desprendimiento de pintura, etc."
+                placeholder="Ej: Humedad visible, fisura diagonal..."
             )
 
-            with st.expander("➕ ¿Deseas agregar más medidas específicas? (Opcional)"):
+            with st.expander("➕ ¿Deseas agregar más medidas específicas?"):
                 col_k, col_v, col_b = st.columns([1.2, 1.2, 0.8])
                 with col_k:
                     nuevo_campo_nombre = st.text_input("Dato", placeholder="Ej: Ancho de fisura")
@@ -453,7 +526,7 @@ if menu == "📸 Nueva Inspección (Cámara)":
 
                 texto_inicial_atributos = "\n".join(st.session_state.atributos_extra)
                 datos_personalizados = st.text_area(
-                    "Medidas adicionales incluidas:",
+                    "Medidas adicionales:",
                     value=texto_inicial_atributos,
                     height=68,
                     placeholder="Ej: - Espesor: 2 mm"
@@ -462,16 +535,15 @@ if menu == "📸 Nueva Inspección (Cámara)":
             st.write("")
             if st.button("✅ GUARDAR ESTE ESPACIO EN EL INFORME", type="primary", use_container_width=True):
                 if imagen_lista_pil is None:
-                    st.error("⚠️ Falta el PASO 1: Primero toma la foto con la cámara o sube una imagen de tu galería.")
+                    st.error("⚠️ Falta el PASO 1: Toma la foto con la cámara o súbela de tu galería.")
                 elif not nombre_espacio.strip():
-                    st.error("⚠️ Falta escribir el nombre del cuarto o lugar (casilla 1️⃣).")
+                    st.error("⚠️ Falta escribir el nombre del cuarto o lugar.")
                 elif not longitud_aprox.strip():
-                    st.error("⚠️ Falta escribir la longitud o medida aproximada (casilla 2️⃣).")
+                    st.error("⚠️ Falta escribir la longitud o medida aproximada.")
                 else:
                     nombre_foto = f"foto_{int(datetime.now().timestamp())}_{len(st.session_state.cuartos_actuales)+1}.jpg"
                     ruta_foto_guardada = os.path.join(CARPETA_FOTOS, nombre_foto)
                     
-                    # Guardado en alta definición
                     guardar_imagen_alta_calidad(imagen_lista_pil, ruta_foto_guardada)
 
                     st.session_state.cuartos_actuales.append({
@@ -489,18 +561,16 @@ if menu == "📸 Nueva Inspección (Cámara)":
                     st.session_state.datos_edicion = None
                     st.session_state.contador_cuarto = len(st.session_state.cuartos_actuales) + 1
                     st.session_state.cam_id += 1
-                    st.toast("✅ Espacio guardado correctamente en alta calidad")
+                    st.toast("✅ Espacio guardado en alta calidad")
                     st.rerun()
 
-    # --- REVISIÓN Y PASO 3: GENERAR PDF ---
     st.divider()
     with st.container(border=True):
-        st.markdown(f'<div class="paso-titulo">PASO 3: Revisar Espacios ({len(st.session_state.cuartos_actuales)}) y Descargar Informe PDF</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="paso-titulo">PASO 3: Revisar Espacios ({len(st.session_state.cuartos_actuales)}) y Crear PDF</div>', unsafe_allow_html=True)
 
         if len(st.session_state.cuartos_actuales) == 0:
-            st.info("👆 Todavía no has agregado ningún espacio. Completa el **PASO 1** y el **PASO 2** arriba y presiona **'✅ GUARDAR ESTE ESPACIO EN EL INFORME'**.")
+            st.info("👆 Todavía no has agregado ningún espacio. Completa el **PASO 1** y el **PASO 2** arriba.")
         else:
-            st.caption("Revisa las zonas que llevas registradas. Si te equivocaste en alguna, toca **'✏️ Corregir'**; si ya terminaste todas las fotos, llena los datos finales abajo para crear tu PDF.")
             cols_preview = st.columns(3)
             for i, cuarto in enumerate(st.session_state.cuartos_actuales):
                 with cols_preview[i % 3]:
@@ -531,15 +601,15 @@ if menu == "📸 Nueva Inspección (Cámara)":
                                 st.rerun()
 
             st.markdown("---")
-            st.markdown("#### 📄 Datos Finales de la Edificación para Crear el PDF")
+            st.markdown("#### 📄 Datos Finales de la Edificación")
             with st.form("form_cerrar_inspeccion"):
                 f1, f2, f3, f4 = st.columns(4)
                 with f1:
-                    proyecto = st.text_input("Nombre de Casa / Edificio *", placeholder="Ej: Casa Familia Pérez")
+                    proyecto = st.text_input("Casa / Edificio *", placeholder="Ej: Casa Familia Pérez")
                 with f2:
-                    direccion = st.text_input("Dirección / Ubicación *", placeholder="Ej: Calle 10 # 15-20")
+                    direccion = st.text_input("Dirección *", placeholder="Ej: Calle 10 # 15-20")
                 with f3:
-                    inspector = st.text_input("Nombre del Inspector *", placeholder="Ej: Ing. Camilo Marimón")
+                    inspector = st.text_input("Inspector *", placeholder="Tu nombre")
                 with f4:
                     estado_insp = st.selectbox("Concepto General", ["Con Fisuras Leves", "Requiere Reparación", "Revisión Estructural Urgente", "Sin Novedad Crítica"])
 
@@ -547,7 +617,7 @@ if menu == "📸 Nueva Inspección (Cámara)":
 
                 if boton_generar_pdf:
                     if not proyecto.strip() or not direccion.strip() or not inspector.strip():
-                        st.error("⚠️ Por favor escribe el nombre de la Casa/Edificio, la Dirección y el nombre del Inspector para crear el PDF.")
+                        st.error("⚠️ Completa los datos de la Casa/Edificio, Dirección e Inspector.")
                     else:
                         ruta_pdf = generar_pdf_inspeccion(
                             proyecto.strip(),
@@ -577,14 +647,12 @@ if menu == "📸 Nueva Inspección (Cámara)":
 # ================= VISTA 2: ABRIR, VER O REHACER INFORMES PDF =================
 elif menu == "📁 Abrir / Ver Informes PDF":
     st.title("📁 Historial de Informes PDF")
-    st.caption("Descarga tus informes anteriores, visualízalos en pantalla o ábrelos para corregirlos.")
-
     df_insp = obtener_inspecciones_bd()
 
     if len(df_insp) == 0:
         st.info("Todavía no hay informes guardados.")
     else:
-        busq = st.text_input("🔍 Buscar por nombre de Casa/Edificio, Dirección o Inspector:")
+        busq = st.text_input("🔍 Buscar informe:")
         if busq:
             df_insp = df_insp[
                 df_insp["proyecto"].str.contains(busq, case=False, na=False) |
@@ -598,7 +666,7 @@ elif menu == "📁 Abrir / Ver Informes PDF":
                 with c_info:
                     st.markdown(f"### 🏢 {fila['proyecto']} — *{fila['estado']}*")
                     st.write(f"📍 **Dirección:** {fila['direccion']} | 👷 **Inspector:** {fila['inspector']} | 📅 **Fecha:** {fila['fecha']}")
-                    st.caption(f"🔢 Zonas registradas: **{fila['total_espacios']}**")
+                    st.caption(f"🔢 Zonas: **{fila['total_espacios']}**")
 
                 with c_acciones:
                     b1, b2 = st.columns(2)
@@ -635,11 +703,9 @@ elif menu == "📁 Abrir / Ver Informes PDF":
                             st.session_state.menu_activo = "📸 Nueva Inspección (Cámara)"
                             st.rerun()
 
-                with st.expander("👁️ Ver el archivo PDF aquí en pantalla"):
+                with st.expander("👁️ Ver PDF en pantalla"):
                     if os.path.exists(fila["ruta_pdf"]):
                         mostrar_visor_pdf_en_pantalla(fila["ruta_pdf"])
-                    else:
-                        st.warning("El archivo PDF no se encuentra disponible.")
 
 # ================= VISTA 3: PANEL DE CONTROL =================
 elif menu == "📊 Panel de Control":
@@ -647,11 +713,11 @@ elif menu == "📊 Panel de Control":
     df_insp = obtener_inspecciones_bd()
 
     c1, c2, c3 = st.columns(3)
-    c1.metric("Total Informes PDF Creados", len(df_insp))
+    c1.metric("Total Informes PDF", len(df_insp))
     total_cuartos = int(df_insp["total_espacios"].sum()) if len(df_insp) > 0 else 0
     c2.metric("Total Zonas Fotografiadas", total_cuartos)
     urgentes = len(df_insp[df_insp["estado"] == "Revisión Estructural Urgente"]) if len(df_insp) > 0 else 0
-    c3.metric("Revisiones Estructurales Urgentes", urgentes)
+    c3.metric("Revisiones Urgentes", urgentes)
 
     st.divider()
     if len(df_insp) > 0:
