@@ -67,7 +67,7 @@ CARPETA_PDFS = "pdfs_informes"
 os.makedirs(CARPETA_FOTOS, exist_ok=True)
 os.makedirs(CARPETA_PDFS, exist_ok=True)
 
-# ================= BASE DE DATOS MULTIUSUARIO (SIN ERRORES DE ESTRUCTURA) =================
+# ================= BASE DE DATOS MULTIUSUARIO =================
 DB_PATH = "ingenieria_inspecciones.db"
 
 def obtener_conexion():
@@ -82,7 +82,7 @@ def inicializar_bd():
     conn = obtener_conexion()
     cursor = conn.cursor()
 
-    # 1. Verificar estructura exacta de la tabla 'usuarios' sin borrar cuentas en cada recarga
+    # 1. Verificar estructura de la tabla 'usuarios'
     cursor.execute("PRAGMA table_info(usuarios);")
     cols_usuarios = [col[1] for col in cursor.fetchall()]
     cols_req_usuarios = {"id", "usuario", "nombre_completo", "password_hash", "fecha_creacion"}
@@ -120,7 +120,6 @@ def inicializar_bd():
                     (str(u).strip().lower(), str(nom).strip(), p_hash, ahora)
                 )
 
-    # Asegurar usuario de respaldo 'admin' (clave: 1234) sin afectar otras cuentas
     cursor.execute(
         "INSERT OR IGNORE INTO usuarios (usuario, nombre_completo, password_hash, fecha_creacion) VALUES (?, ?, ?, ?)",
         ("admin", "Administrador", hash_password("1234"), datetime.now().strftime("%Y-%m-%d %H:%M"))
@@ -190,7 +189,6 @@ def registrar_o_actualizar_usuario_bd(usuario, nombre_completo, password):
     existe = cursor.fetchone()
 
     if existe:
-        # Si ya existía el usuario, actualiza su contraseña para que nunca quede bloqueado
         cursor.execute(
             "UPDATE usuarios SET password_hash = ?, nombre_completo = ? WHERE LOWER(usuario) = ?",
             (p_hash, nom_limpio, u_limpio)
@@ -249,7 +247,7 @@ if not st.session_state.usuario_logueado:
                                 st.session_state.usuario_logueado = usuario_valido
                                 st.rerun()
                             else:
-                                st.error("❌ Usuario o contraseña incorrectos. Si olvidaste tu clave, entra a la pestaña '➕ Crear Cuenta Nueva' y escríbela de nuevo para actualizarla.")
+                                st.error("❌ Usuario o contraseña incorrectos. Si olvidaste tu clave, entra a '➕ Crear Cuenta Nueva' para actualizarla.")
 
                 st.caption("💡 *Acceso rápido de respaldo: Usuario **`admin`** | Contraseña **`1234`***")
 
@@ -288,21 +286,6 @@ def guardar_imagen_alta_calidad(imagen_pil, ruta_destino):
     )
 
 # ================= FUNCIONES PARA ABRIR Y VER EL ARCHIVO PDF =================
-def abrir_pdf_en_computador(ruta_pdf):
-    ruta_absoluta = os.path.abspath(ruta_pdf)
-    if os.path.exists(ruta_absoluta):
-        try:
-            if sys.platform == "win32":
-                os.startfile(ruta_absoluta)
-            elif sys.platform == "darwin":
-                subprocess.Popen(["open", ruta_absoluta])
-            else:
-                subprocess.Popen(["xdg-open", ruta_absoluta])
-            return True
-        except Exception:
-            return False
-    return False
-
 def mostrar_visor_pdf_en_pantalla(ruta_pdf):
     if os.path.exists(ruta_pdf):
         with open(ruta_pdf, "rb") as f:
@@ -315,7 +298,7 @@ def mostrar_visor_pdf_en_pantalla(ruta_pdf):
         """
         st.markdown(visor_html, unsafe_allow_html=True)
 
-# ================= GENERADOR DE ARCHIVOS PDF (SIN ETIQUETA DE IMAGEN NÍTIDA) =================
+# ================= GENERADOR DE ARCHIVOS PDF =================
 def limpiar_texto_pdf(texto):
     if not texto:
         return ""
@@ -496,7 +479,6 @@ if menu == "📸 Nueva Inspección (Cámara)":
     st.title("📸 Crear Informe de Inspección")
     st.caption("Completa los 3 pasos en orden para registrar las fotografías en alta calidad y generar tu PDF.")
 
-    # Cuadro de descarga cuando se acaba de crear un PDF
     if "ultimo_pdf" in st.session_state and os.path.exists(st.session_state.ultimo_pdf):
         with st.container(border=True):
             st.success("✅ **¡Tu archivo PDF fue generado con éxito!** Selecciona qué deseas hacer:")
@@ -586,7 +568,7 @@ if menu == "📸 Nueva Inspección (Cámara)":
             nombre_espacio = st.text_input(
                 "1️⃣ Nombre del cuarto o espacio (Obligatorio) *",
                 value=valor_nombre,
-                placeholder="Ej: Cuarto 1, Sala, Fachada Principal"
+                placeholder="Ej: Cuarto 1, Sala, Habitación Principal"
             )
 
             c1, c2 = st.columns(2)
@@ -597,18 +579,41 @@ if menu == "📸 Nueva Inspección (Cámara)":
                     placeholder="Ej: 2.10 m / 80 cm"
                 )
             with c2:
+                # Opciones simplificadas + opción para escribir manualmente
                 lista_fachadas = [
-                    "Muro Interior",
-                    "Fachada Principal (Frontal)",
-                    "Fachada Posterior",
-                    "Fachada Lateral Derecha",
-                    "Fachada Lateral Izquierda",
-                    "Columna / Viga Estructural",
-                    "Losa / Techo / Cielo Raso",
-                    "Piso / Contrapiso"
+                    "Muro",
+                    "Fachada",
+                    "Columna / Viga",
+                    "Losa / Techo",
+                    "Piso",
+                    "✍️ Escribir manualmente..."
                 ]
-                idx_fachada = lista_fachadas.index(editando["fachada_ubicacion"]) if (editando and editando["fachada_ubicacion"] in lista_fachadas) else 0
-                fachada_ubicacion = st.selectbox("3️⃣ Fachada / Ubicación *", lista_fachadas, index=idx_fachada)
+                valor_ubic_previa = editando["fachada_ubicacion"] if editando else "Muro"
+                if valor_ubic_previa in lista_fachadas[:-1]:
+                    idx_fachada = lista_fachadas.index(valor_ubic_previa)
+                    texto_manual_previo = ""
+                elif editando and valor_ubic_previa:
+                    idx_fachada = len(lista_fachadas) - 1
+                    texto_manual_previo = valor_ubic_previa
+                else:
+                    idx_fachada = 0
+                    texto_manual_previo = ""
+
+                seleccion_ubicacion = st.selectbox(
+                    "3️⃣ Fachada / Ubicación *",
+                    lista_fachadas,
+                    index=idx_fachada
+                )
+
+            # Si elige escribir manualmente, mostrar casilla para escribir lo que quiera
+            if seleccion_ubicacion == "✍️ Escribir manualmente...":
+                fachada_ubicacion = st.text_input(
+                    "✍️ Escribe la ubicación manualmente (Obligatorio) *",
+                    value=texto_manual_previo,
+                    placeholder="Ej: Muro divisorio baño, Escalera, Balcón..."
+                )
+            else:
+                fachada_ubicacion = seleccion_ubicacion
 
             observaciones = st.text_area(
                 "4️⃣ Observaciones o descripción de la fisura (Opcional):",
@@ -647,6 +652,8 @@ if menu == "📸 Nueva Inspección (Cámara)":
                     st.error("⚠️ Escribe el nombre del cuarto o espacio en la casilla 1️⃣.")
                 elif not longitud_aprox.strip():
                     st.error("⚠️ Escribe la longitud o medida aproximada en la casilla 2️⃣.")
+                elif not fachada_ubicacion.strip():
+                    st.error("⚠️ Escribe la ubicación manual en la casilla 3️⃣.")
                 else:
                     nombre_foto = f"foto_{int(datetime.now().timestamp())}_{len(st.session_state.cuartos_actuales)+1}.jpg"
                     ruta_foto_guardada = os.path.join(CARPETA_FOTOS, nombre_foto)
@@ -654,7 +661,7 @@ if menu == "📸 Nueva Inspección (Cámara)":
 
                     st.session_state.cuartos_actuales.append({
                         "nombre_espacio": nombre_espacio.strip(),
-                        "fachada_ubicacion": fachada_ubicacion,
+                        "fachada_ubicacion": fachada_ubicacion.strip(),
                         "longitud_aprox": longitud_aprox.strip(),
                         "datos_personalizados": datos_personalizados.strip(),
                         "observaciones": observaciones.strip(),
