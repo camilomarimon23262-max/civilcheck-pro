@@ -4,6 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CivilCheck Pro - Offline</title>
+    
+    <!-- Conexión con el instalador de la App -->
+    <link rel="manifest" href="./manifest.json">
+    <meta name="theme-color" content="#1e3a8a">
+
     <!-- Librería para generar PDFs en el celular -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
@@ -15,7 +20,7 @@
         input, select, textarea { width: 100%; padding: 12px; margin: 8px 0 15px 0; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
         .btn { background-color: #ef4444; color: white; border: none; padding: 14px; border-radius: 8px; width: 100%; font-size: 16px; font-weight: bold; cursor: pointer; }
         .btn-blue { background-color: #3b82f6; }
-        #preview-foto { max-width: 100%; border-radius: 8px; display: none; margin-top: 10px; }
+        #preview-foto { max-width: 100%; border-radius: 8px; display: none; margin-top: 10px; margin-bottom: 15px; }
         .cuarto-guardado { border: 1px solid #e2e8f0; padding: 10px; border-radius: 8px; margin-bottom: 10px; }
     </style>
 </head>
@@ -46,7 +51,13 @@
             <option>Columna / Viga</option>
             <option>Losa / Techo</option>
             <option>Piso</option>
+            <option>✍️ Escribir manualmente...</option>
         </select>
+        
+        <div id="divManual" style="display:none; margin-top: 10px;">
+            <label>Ubicación manual *</label>
+            <input type="text" id="ubicacionManual" placeholder="Ej: Balcón, Escalera...">
+        </div>
 
         <label>4️⃣ Observaciones (Opcional)</label>
         <textarea id="obsInput" rows="2" placeholder="Humedad, tipo de fisura..."></textarea>
@@ -69,10 +80,20 @@
     </div>
 
     <script>
+        // Conectar el motor Offline (Service Worker)
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('./sw.js')
+            .then(() => console.log('Modo Offline Activo'))
+            .catch(err => console.log('Error:', err));
+        }
+
         let espacios = [];
         let fotoActualBase64 = "";
 
-        // Mostrar vista previa de la foto en alta calidad
+        document.getElementById('ubicacionInput').addEventListener('change', function(e) {
+            document.getElementById('divManual').style.display = (e.target.value === "✍️ Escribir manualmente...") ? 'block' : 'none';
+        });
+
         document.getElementById('fotoInput').addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (!file) return;
@@ -89,10 +110,18 @@
         function guardarEspacio() {
             const nombre = document.getElementById('nombreInput').value;
             const medida = document.getElementById('medidaInput').value;
-            const ubicacion = document.getElementById('ubicacionInput').value;
+            let ubicacion = document.getElementById('ubicacionInput').value;
             const obs = document.getElementById('obsInput').value;
 
-            if (!fotoActualBase64 || !nombre || !medida) {
+            if (ubicacion === "✍️ Escribir manualmente...") {
+                ubicacion = document.getElementById('ubicacionManual').value;
+                if (!ubicacion.trim()) {
+                    alert("⚠️ Escribe la ubicación manual.");
+                    return;
+                }
+            }
+
+            if (!fotoActualBase64 || !nombre.trim() || !medida.trim()) {
                 alert("⚠️ Falta la foto, el nombre o la medida.");
                 return;
             }
@@ -100,10 +129,10 @@
             espacios.push({ nombre, medida, ubicacion, obs, foto: fotoActualBase64 });
             actualizarLista();
             
-            // Limpiar formulario
             document.getElementById('nombreInput').value = "";
             document.getElementById('medidaInput').value = "";
             document.getElementById('obsInput').value = "";
+            document.getElementById('ubicacionManual').value = "";
             document.getElementById('fotoInput').value = "";
             document.getElementById('preview-foto').style.display = "none";
             fotoActualBase64 = "";
@@ -128,7 +157,7 @@
             const proyecto = document.getElementById('proyectoInput').value;
             const inspector = document.getElementById('inspectorInput').value;
 
-            if (!proyecto || !inspector || espacios.length === 0) {
+            if (!proyecto.trim() || !inspector.trim() || espacios.length === 0) {
                 alert("⚠️ Completa los datos finales y agrega al menos una foto.");
                 return;
             }
@@ -154,14 +183,12 @@
                 doc.text(`Medida: ${esp.medida}`, 15, y + 6);
                 if (esp.obs) doc.text(`Obs: ${esp.obs}`, 15, y + 12);
                 
-                // Incrustar foto
                 doc.addImage(esp.foto, 'JPEG', 15, y + 16, 120, 90);
                 y += 115;
             });
 
-            // Forzar la descarga directa al celular
             doc.save(`Informe_${proyecto.replace(/ /g, "_")}.pdf`);
-            alert("🎉 PDF generado y descargado en tu celular.");
+            alert("🎉 PDF descargado en tu celular.");
             espacios = [];
             actualizarLista();
         }
