@@ -1,0 +1,16 @@
+{
+  "name": "CivilCheck Pro",
+  "short_name": "CivilCheck",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f0f2f6",
+  "theme_color": "#1e3a8a",
+  "icons": [
+    {
+      "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIj48cmVjdCB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgZmlsbD0iIzFlM2E4YSIvPjx0ZXh0IHg9IjI1NiIgeT0iMzIwIiBmb250LXNpemU9IjI1MCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0id2hpdGUiPvCfjbc8L3RleHQ+PC9zdmc+",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
