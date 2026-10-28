@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CivilCheck Pro - Offline</title>
+    <!-- Librería para generar PDFs en el celular -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f6; margin: 0; padding: 15px; }
+        .banner { background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%); color: white; padding: 20px; border-radius: 12px; text-align: center; margin-bottom: 20px; }
+        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        .paso-titulo { background-color: #1e3a8a; color: white; padding: 10px 15px; border-radius: 8px; font-weight: bold; margin-bottom: 15px; }
+        label { font-weight: bold; font-size: 0.9rem; color: #333; }
+        input, select, textarea { width: 100%; padding: 12px; margin: 8px 0 15px 0; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
+        .btn { background-color: #ef4444; color: white; border: none; padding: 14px; border-radius: 8px; width: 100%; font-size: 16px; font-weight: bold; cursor: pointer; }
+        .btn-blue { background-color: #3b82f6; }
+        #preview-foto { max-width: 100%; border-radius: 8px; display: none; margin-top: 10px; }
+        .cuarto-guardado { border: 1px solid #e2e8f0; padding: 10px; border-radius: 8px; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+
+    <div class="banner">
+        <h1 style="margin:0;">🏗️ CivilCheck Pro</h1>
+        <p style="margin:5px 0 0 0;">Modo 100% Campo (Sin Internet)</p>
+    </div>
+
+    <div class="card">
+        <div class="paso-titulo">PASO 1 y 2: Fotografía y Datos</div>
+        
+        <label>📷 Tomar Foto (Usa la cámara de tu celular)</label>
+        <input type="file" id="fotoInput" accept="image/*" capture="environment">
+        <img id="preview-foto" alt="Vista previa">
+
+        <label>1️⃣ Nombre del lugar *</label>
+        <input type="text" id="nombreInput" placeholder="Ej: Sala, Habitación Principal">
+
+        <label>2️⃣ Longitud o medida *</label>
+        <input type="text" id="medidaInput" placeholder="Ej: 1.50 m">
+
+        <label>3️⃣ Fachada / Ubicación *</label>
+        <select id="ubicacionInput">
+            <option>Muro</option>
+            <option>Fachada</option>
+            <option>Columna / Viga</option>
+            <option>Losa / Techo</option>
+            <option>Piso</option>
+        </select>
+
+        <label>4️⃣ Observaciones (Opcional)</label>
+        <textarea id="obsInput" rows="2" placeholder="Humedad, tipo de fisura..."></textarea>
+
+        <button class="btn btn-blue" onclick="guardarEspacio()">✅ GUARDAR ESTE ESPACIO</button>
+    </div>
+
+    <div class="card">
+        <div class="paso-titulo">PASO 3: Generar Informe PDF</div>
+        <div id="lista-cuartos"></div>
+        <p id="contador">Zonas guardadas: 0</p>
+        
+        <label>Casa / Edificio *</label>
+        <input type="text" id="proyectoInput" placeholder="Ej: Casa Familia Pérez">
+        
+        <label>Inspector *</label>
+        <input type="text" id="inspectorInput" placeholder="Tu nombre">
+
+        <button class="btn" onclick="generarPDF()">📄 DESCARGAR PDF</button>
+    </div>
+
+    <script>
+        let espacios = [];
+        let fotoActualBase64 = "";
+
+        // Mostrar vista previa de la foto en alta calidad
+        document.getElementById('fotoInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                fotoActualBase64 = event.target.result;
+                const img = document.getElementById('preview-foto');
+                img.src = fotoActualBase64;
+                img.style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+        });
+
+        function guardarEspacio() {
+            const nombre = document.getElementById('nombreInput').value;
+            const medida = document.getElementById('medidaInput').value;
+            const ubicacion = document.getElementById('ubicacionInput').value;
+            const obs = document.getElementById('obsInput').value;
+
+            if (!fotoActualBase64 || !nombre || !medida) {
+                alert("⚠️ Falta la foto, el nombre o la medida.");
+                return;
+            }
+
+            espacios.push({ nombre, medida, ubicacion, obs, foto: fotoActualBase64 });
+            actualizarLista();
+            
+            // Limpiar formulario
+            document.getElementById('nombreInput').value = "";
+            document.getElementById('medidaInput').value = "";
+            document.getElementById('obsInput').value = "";
+            document.getElementById('fotoInput').value = "";
+            document.getElementById('preview-foto').style.display = "none";
+            fotoActualBase64 = "";
+            alert("✅ Espacio guardado");
+        }
+
+        function actualizarLista() {
+            const div = document.getElementById('lista-cuartos');
+            document.getElementById('contador').innerText = `Zonas guardadas: ${espacios.length}`;
+            div.innerHTML = "";
+            espacios.forEach((esp, index) => {
+                div.innerHTML += `
+                    <div class="cuarto-guardado">
+                        <strong>${index + 1}. ${esp.nombre}</strong><br>
+                        📍 ${esp.ubicacion} | 📏 ${esp.medida}
+                    </div>
+                `;
+            });
+        }
+
+        function generarPDF() {
+            const proyecto = document.getElementById('proyectoInput').value;
+            const inspector = document.getElementById('inspectorInput').value;
+
+            if (!proyecto || !inspector || espacios.length === 0) {
+                alert("⚠️ Completa los datos finales y agrega al menos una foto.");
+                return;
+            }
+
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            
+            doc.setFontSize(16);
+            doc.text("INFORME TECNICO DE INSPECCION", 105, 20, null, null, "center");
+            doc.setFontSize(11);
+            doc.text(`Proyecto: ${proyecto}`, 15, 35);
+            doc.text(`Inspector: ${inspector}`, 15, 42);
+            doc.text(`Fecha: ${new Date().toLocaleDateString()}`, 15, 49);
+
+            let y = 65;
+
+            espacios.forEach((esp, index) => {
+                if (y > 200) { doc.addPage(); y = 20; }
+                
+                doc.setFontSize(12);
+                doc.text(`Zona #${index + 1}: ${esp.nombre} (${esp.ubicacion})`, 15, y);
+                doc.setFontSize(10);
+                doc.text(`Medida: ${esp.medida}`, 15, y + 6);
+                if (esp.obs) doc.text(`Obs: ${esp.obs}`, 15, y + 12);
+                
+                // Incrustar foto
+                doc.addImage(esp.foto, 'JPEG', 15, y + 16, 120, 90);
+                y += 115;
+            });
+
+            // Forzar la descarga directa al celular
+            doc.save(`Informe_${proyecto.replace(/ /g, "_")}.pdf`);
+            alert("🎉 PDF generado y descargado en tu celular.");
+            espacios = [];
+            actualizarLista();
+        }
+    </script>
+</body>
+</html>
