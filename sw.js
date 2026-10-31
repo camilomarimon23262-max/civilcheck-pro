@@ -1,4 +1,4 @@
-const CACHE_NAME = 'civilcheck-offline-v3';
+const CACHE_NAME = 'civilcheck-offline-v4';
 const urlsToCache = [
   './',
   './index.html',
@@ -23,12 +23,14 @@ self.addEventListener('activate', event => {
           }
         })
       );
-    })
+    }).then(() => self.clients.claim())
   );
 });
 
 self.addEventListener('fetch', event => {
   event.respondWith(
-    caches.match(event.request).then(response => response || fetch(event.request))
+    caches.match(event.request).then(response => {
+      return response || fetch(event.request);
+    })
   );
 });
