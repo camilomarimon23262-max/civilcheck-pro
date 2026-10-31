@@ -1,4 +1,4 @@
-const CACHE_NAME = 'civilcheck-offline-v5';
+const CACHE_NAME = 'civilcheck-offline-v6';
 const urlsToCache = [
   './',
   './index.html',
