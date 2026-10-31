@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CivilCheck Pro - Modo Campo Offline</title>
+    <title>CivilCheck Pro - Sistema de Inspección Técnica</title>
     <link rel="manifest" href="./manifest.json">
     <meta name="theme-color" content="#1e3a8a">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -157,7 +157,7 @@
 
     <div class="banner">
         <h1 style="margin:0;">🏗️ CivilCheck Pro</h1>
-        <p style="margin:5px 0 0 0;">Sistema de Inspección Técnica (Modo 100% Campo Offline)</p>
+        <p style="margin:5px 0 0 0;">Sistema de Inspección Técnica y Patología Estructural</p>
     </div>
 
     <!-- PANTALLA DE ACCESO (LOGIN Y CREAR CUENTA) -->
@@ -189,7 +189,7 @@
         </div>
     </div>
 
-    <!-- APLICACIÓN PRINCIPAL (OCULTA HASTA INICIAR SESIÓN) -->
+    <!-- APLICACIÓN PRINCIPAL -->
     <div id="seccion-app" style="display:none;">
         <div class="barra-usuario">
             <span id="textoUsuarioActivo">👷 Inspector: <strong></strong></span>
@@ -214,19 +214,14 @@
             <input type="text" id="medidaInput" placeholder="Ej: 1.50 m">
 
             <label>3️⃣ Fachada / Ubicación *</label>
-            <select id="ubicacionInput">
-                <option value="Muro">Muro</option>
-                <option value="Fachada">Fachada</option>
-                <option value="Columna / Viga">Columna / Viga</option>
-                <option value="Losa / Techo">Losa / Techo</option>
-                <option value="Piso">Piso</option>
-                <option value="MANUAL">✍️ Escribir manualmente...</option>
-            </select>
-            
-            <div id="divManual" style="display:none;">
-                <label>Ubicación manual *</label>
-                <input type="text" id="ubicacionManual" placeholder="Ej: Balcón, Escalera...">
-            </div>
+            <input type="text" id="ubicacionInput" list="opcionesUbicacion" placeholder="Presiona aquí para escribir (Ej: Muro, Fachada, Balcón...)">
+            <datalist id="opcionesUbicacion">
+                <option value="Muro"></option>
+                <option value="Fachada"></option>
+                <option value="Columna / Viga"></option>
+                <option value="Losa / Techo"></option>
+                <option value="Piso"></option>
+            </datalist>
 
             <label>4️⃣ Observaciones (Opcional)</label>
             <textarea id="obsInput" rows="3" placeholder="Humedad, tipo de fisura..."></textarea>
@@ -254,7 +249,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('./sw.js')
-                .then(() => console.log('Modo Offline Activo'))
+                .then(() => console.log('Service Worker registrado'))
                 .catch(err => console.error('Error SW:', err));
         }
 
@@ -354,10 +349,6 @@
             verificarSesionActiva();
         }
 
-        document.getElementById('ubicacionInput').addEventListener('change', function(e) {
-            document.getElementById('divManual').style.display = (e.target.value === "MANUAL") ? 'block' : 'none';
-        });
-
         document.getElementById('fotoInput').addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (!file) return;
@@ -400,19 +391,11 @@
         function guardarEspacio() {
             const nombre = document.getElementById('nombreInput').value.trim();
             const medida = document.getElementById('medidaInput').value.trim();
-            let ubicacion = document.getElementById('ubicacionInput').value;
+            const ubicacion = document.getElementById('ubicacionInput').value.trim();
             const obs = document.getElementById('obsInput').value.trim();
 
-            if (ubicacion === "MANUAL") {
-                ubicacion = document.getElementById('ubicacionManual').value.trim();
-                if (!ubicacion) {
-                    alert("⚠️ Escribe la ubicación manual.");
-                    return;
-                }
-            }
-
-            if (!fotoActualBase64 || !nombre || !medida) {
-                alert("⚠️ Falta la fotografía, el nombre del lugar o la medida.");
+            if (!fotoActualBase64 || !nombre || !medida || !ubicacion) {
+                alert("⚠️ Falta la fotografía, el nombre del lugar, la medida o la ubicación.");
                 return;
             }
 
@@ -433,10 +416,8 @@
         function limpiarFormulario() {
             document.getElementById('nombreInput').value = "";
             document.getElementById('medidaInput').value = "";
+            document.getElementById('ubicacionInput').value = "";
             document.getElementById('obsInput').value = "";
-            document.getElementById('ubicacionManual').value = "";
-            document.getElementById('ubicacionInput').value = "Muro";
-            document.getElementById('divManual').style.display = "none";
             descartarFotoActual();
             indiceEdicion = -1;
             document.getElementById('btnGuardarEspacio').innerText = "✅ GUARDAR ESTE ESPACIO";
@@ -449,17 +430,8 @@
             indiceEdicion = index;
             document.getElementById('nombreInput').value = esp.nombre;
             document.getElementById('medidaInput').value = esp.medida;
+            document.getElementById('ubicacionInput').value = esp.ubicacion || "";
             document.getElementById('obsInput').value = esp.obs || "";
-
-            const opcionesEstandar = ["Muro", "Fachada", "Columna / Viga", "Losa / Techo", "Piso"];
-            if (opcionesEstandar.includes(esp.ubicacion)) {
-                document.getElementById('ubicacionInput').value = esp.ubicacion;
-                document.getElementById('divManual').style.display = "none";
-            } else {
-                document.getElementById('ubicacionInput').value = "MANUAL";
-                document.getElementById('divManual').style.display = "block";
-                document.getElementById('ubicacionManual').value = esp.ubicacion;
-            }
 
             fotoActualBase64 = esp.foto;
             document.getElementById('preview-foto').src = fotoActualBase64;
