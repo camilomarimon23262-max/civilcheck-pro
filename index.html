@@ -3,95 +3,204 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CivilCheck Pro - Offline</title>
-    
-    <!-- Conexión con el instalador de la App -->
+    <title>CivilCheck Pro - Modo Campo Offline</title>
     <link rel="manifest" href="./manifest.json">
     <meta name="theme-color" content="#1e3a8a">
-
-    <!-- Librería para generar PDFs en el celular -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f6; margin: 0; padding: 15px; }
-        .banner { background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%); color: white; padding: 20px; border-radius: 12px; text-align: center; margin-bottom: 20px; }
-        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px; }
-        .paso-titulo { background-color: #1e3a8a; color: white; padding: 10px 15px; border-radius: 8px; font-weight: bold; margin-bottom: 15px; }
-        label { font-weight: bold; font-size: 0.9rem; color: #333; }
-        input, select, textarea { width: 100%; padding: 12px; margin: 8px 0 15px 0; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
-        .btn { background-color: #ef4444; color: white; border: none; padding: 14px; border-radius: 8px; width: 100%; font-size: 16px; font-weight: bold; cursor: pointer; }
-        .btn-blue { background-color: #3b82f6; }
-        #preview-foto { max-width: 100%; border-radius: 8px; display: none; margin-top: 10px; margin-bottom: 15px; }
-        .cuarto-guardado { border: 1px solid #e2e8f0; padding: 10px; border-radius: 8px; margin-bottom: 10px; }
+        :root {
+            --primary: #1e3a8a;
+            --secondary: #3b82f6;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --success: #10b981;
+            --bg: #f0f2f6;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg);
+            margin: 0;
+            padding: 15px;
+            color: #1e293b;
+        }
+        .banner {
+            background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+        }
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+            border: 1px solid #e2e8f0;
+        }
+        .paso-titulo {
+            background-color: var(--primary);
+            color: white;
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+        label {
+            font-weight: bold;
+            font-size: 0.92rem;
+            color: #334155;
+            display: block;
+            margin-top: 8px;
+        }
+        input, select, textarea {
+            width: 100%;
+            padding: 12px;
+            margin: 6px 0 14px 0;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            box-sizing: border-box;
+            font-size: 16px;
+        }
+        .btn {
+            border: none;
+            padding: 14px;
+            border-radius: 8px;
+            width: 100%;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-bottom: 10px;
+            color: white;
+        }
+        .btn-blue { background-color: var(--secondary); }
+        .btn-red { background-color: var(--danger); }
+        .btn-orange { background-color: var(--warning); }
+        .btn-green { background-color: var(--success); }
+        .btn-small {
+            padding: 8px 12px;
+            font-size: 13px;
+            width: auto;
+            display: inline-block;
+            margin-right: 6px;
+            margin-top: 8px;
+        }
+        #preview-container {
+            display: none;
+            text-align: center;
+            margin: 10px 0 15px 0;
+        }
+        #preview-foto {
+            max-width: 100%;
+            max-height: 320px;
+            border-radius: 8px;
+            border: 2px solid #cbd5e1;
+            margin-bottom: 8px;
+        }
+        .cuarto-guardado {
+            border: 1px solid #cbd5e1;
+            background: #f8fafc;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 12px;
+        }
+        .mini-thumb {
+            width: 70px;
+            height: 70px;
+            object-fit: cover;
+            border-radius: 6px;
+            float: right;
+            border: 1px solid #94a3b8;
+        }
+        .clearfix::after {
+            content: "";
+            clear: both;
+            display: table;
+        }
     </style>
 </head>
 <body>
 
     <div class="banner">
         <h1 style="margin:0;">🏗️ CivilCheck Pro</h1>
-        <p style="margin:5px 0 0 0;">Modo 100% Campo (Sin Internet)</p>
+        <p style="margin:5px 0 0 0;">Modo 100% Campo (Autoguardado Offline)</p>
     </div>
 
-    <div class="card">
-        <div class="paso-titulo">PASO 1 y 2: Fotografía y Datos</div>
+    <div class="card" id="formulario-card">
+        <div class="paso-titulo" id="titulo-paso1">PASO 1 y 2: Fotografía y Datos de la Zona</div>
         
-        <label>📷 Tomar Foto (Usa la cámara de tu celular)</label>
+        <label>📷 1. Tomar o Seleccionar Fotografía *</label>
         <input type="file" id="fotoInput" accept="image/*" capture="environment">
-        <img id="preview-foto" alt="Vista previa">
-
-        <label>1️⃣ Nombre del lugar *</label>
-        <input type="text" id="nombreInput" placeholder="Ej: Sala, Habitación Principal">
-
-        <label>2️⃣ Longitud o medida *</label>
-        <input type="text" id="medidaInput" placeholder="Ej: 1.50 m">
-
-        <label>3️⃣ Fachada / Ubicación *</label>
-        <select id="ubicacionInput">
-            <option>Muro</option>
-            <option>Fachada</option>
-            <option>Columna / Viga</option>
-            <option>Losa / Techo</option>
-            <option>Piso</option>
-            <option>✍️ Escribir manualmente...</option>
-        </select>
         
-        <div id="divManual" style="display:none; margin-top: 10px;">
-            <label>Ubicación manual *</label>
-            <input type="text" id="ubicacionManual" placeholder="Ej: Balcón, Escalera...">
+        <div id="preview-container">
+            <img id="preview-foto" alt="Vista previa de inspección">
+            <button type="button" class="btn btn-orange" onclick="descartarFotoActual()">🔄 Volver a tomar / Cambiar foto</button>
         </div>
 
-        <label>4️⃣ Observaciones (Opcional)</label>
-        <textarea id="obsInput" rows="2" placeholder="Humedad, tipo de fisura..."></textarea>
+        <label>2. Nombre del lugar o ambiente *</label>
+        <input type="text" id="nombreInput" placeholder="Ej: Sala, Habitación Principal, Sótano 1">
 
-        <button class="btn btn-blue" onclick="guardarEspacio()">✅ GUARDAR ESTE ESPACIO</button>
+        <label>3. Longitud, espesor o medida *</label>
+        <input type="text" id="medidaInput" placeholder="Ej: Fisura de 1.50 m x 2 mm">
+
+        <label>4. Elemento / Ubicación *</label>
+        <select id="ubicacionInput">
+            <option value="Muro">Muro</option>
+            <option value="Fachada">Fachada</option>
+            <option value="Columna / Viga">Columna / Viga</option>
+            <option value="Losa / Techo">Losa / Techo</option>
+            <option value="Piso">Piso</option>
+            <option value="MANUAL">✍️ Escribir manualmente...</option>
+        </select>
+        
+        <div id="divManual" style="display:none;">
+            <label>Especificar ubicación manual *</label>
+            <input type="text" id="ubicacionManual" placeholder="Ej: Balcón Norte, Escalera de emergencia">
+        </div>
+
+        <label>5. Diagnóstico y observaciones técnicas</label>
+        <textarea id="obsInput" rows="3" placeholder="Ej: Presencia de eflorescencia y humedad activa..."></textarea>
+
+        <button type="button" class="btn btn-blue" id="btnGuardarEspacio" onclick="guardarEspacio()">✅ GUARDAR ESTE ESPACIO</button>
+        <button type="button" class="btn btn-orange" id="btnCancelarEdicion" style="display:none;" onclick="limpiarFormulario()">❌ Cancelar Edición</button>
     </div>
 
     <div class="card">
-        <div class="paso-titulo">PASO 3: Generar Informe PDF</div>
-        <div id="lista-cuartos"></div>
-        <p id="contador">Zonas guardadas: 0</p>
+        <div class="paso-titulo">PASO 3: Revisión y Generación de Informe PDF</div>
         
-        <label>Casa / Edificio *</label>
-        <input type="text" id="proyectoInput" placeholder="Ej: Casa Familia Pérez">
+        <label>🏢 Proyecto / Edificio / Vivienda *</label>
+        <input type="text" id="proyectoInput" placeholder="Ej: Edificio Mirador - Apto 402" oninput="guardarBorradorLocal()">
         
-        <label>Inspector *</label>
-        <input type="text" id="inspectorInput" placeholder="Tu nombre">
+        <label>👷 Ingeniero / Inspector *</label>
+        <input type="text" id="inspectorInput" placeholder="Tu nombre completo" oninput="guardarBorradorLocal()">
 
-        <button class="btn" onclick="generarPDF()">📄 DESCARGAR PDF</button>
+        <p id="contador" style="font-weight:bold; color:#1e3a8a;">Zonas registradas: 0</p>
+        <div id="lista-cuartos"></div>
+
+        <button type="button" class="btn btn-green" onclick="generarPDF()">📄 DESCARGAR INFORME PDF</button>
+        <button type="button" class="btn btn-red" onclick="reiniciarInformeCompleto()">🗑️ Limpiar y empezar informe desde cero</button>
     </div>
 
     <script>
-        // Conectar el motor Offline (Service Worker)
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('./sw.js')
-            .then(() => console.log('Modo Offline Activo'))
-            .catch(err => console.log('Error:', err));
+                .then(() => console.log('Service Worker activo para modo offline'))
+                .catch(err => console.error('Error registrando Service Worker:', err));
         }
 
+        const STORAGE_KEY = 'civilcheck_borrador_v1';
         let espacios = [];
         let fotoActualBase64 = "";
+        let indiceEdicion = -1;
+
+        window.addEventListener('DOMContentLoaded', () => {
+            cargarBorradorLocal();
+        });
 
         document.getElementById('ubicacionInput').addEventListener('change', function(e) {
-            document.getElementById('divManual').style.display = (e.target.value === "✍️ Escribir manualmente...") ? 'block' : 'none';
+            document.getElementById('divManual').style.display = (e.target.value === "MANUAL") ? 'block' : 'none';
         });
 
         document.getElementById('fotoInput').addEventListener('change', function(e) {
@@ -99,98 +208,229 @@
             if (!file) return;
             const reader = new FileReader();
             reader.onload = function(event) {
-                fotoActualBase64 = event.target.result;
-                const img = document.getElementById('preview-foto');
-                img.src = fotoActualBase64;
-                img.style.display = 'block';
+                optimizarImagen(event.target.result, 1600, 0.92, (base64Optimizada) => {
+                    fotoActualBase64 = base64Optimizada;
+                    document.getElementById('preview-foto').src = fotoActualBase64;
+                    document.getElementById('preview-container').style.display = 'block';
+                });
             };
             reader.readAsDataURL(file);
         });
 
-        function guardarEspacio() {
-            const nombre = document.getElementById('nombreInput').value;
-            const medida = document.getElementById('medidaInput').value;
-            let ubicacion = document.getElementById('ubicacionInput').value;
-            const obs = document.getElementById('obsInput').value;
+        function optimizarImagen(base64Str, maxWidth, quality, callback) {
+            const img = new Image();
+            img.src = base64Str;
+            img.onload = function() {
+                const canvas = document.createElement('canvas');
+                let width = img.width;
+                let height = img.height;
+                if (width > maxWidth) {
+                    height = Math.round((height * maxWidth) / width);
+                    width = maxWidth;
+                }
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+                callback(canvas.toDataURL('image/jpeg', quality));
+            };
+        }
 
-            if (ubicacion === "✍️ Escribir manualmente...") {
-                ubicacion = document.getElementById('ubicacionManual').value;
-                if (!ubicacion.trim()) {
-                    alert("⚠️ Escribe la ubicación manual.");
+        function descartarFotoActual() {
+            fotoActualBase64 = "";
+            document.getElementById('fotoInput').value = "";
+            document.getElementById('preview-container').style.display = 'none';
+        }
+
+        function guardarEspacio() {
+            const nombre = document.getElementById('nombreInput').value.trim();
+            const medida = document.getElementById('medidaInput').value.trim();
+            let ubicacion = document.getElementById('ubicacionInput').value;
+            const obs = document.getElementById('obsInput').value.trim();
+
+            if (ubicacion === "MANUAL") {
+                ubicacion = document.getElementById('ubicacionManual').value.trim();
+                if (!ubicacion) {
+                    alert("⚠️ Por favor escribe la ubicación manual.");
                     return;
                 }
             }
 
-            if (!fotoActualBase64 || !nombre.trim() || !medida.trim()) {
-                alert("⚠️ Falta la foto, el nombre o la medida.");
+            if (!fotoActualBase64 || !nombre || !medida) {
+                alert("⚠️ Debes tomar la fotografía y completar el nombre del lugar y la medida.");
                 return;
             }
 
-            espacios.push({ nombre, medida, ubicacion, obs, foto: fotoActualBase64 });
+            const registro = { nombre, medida, ubicacion, obs, foto: fotoActualBase64 };
+
+            if (indiceEdicion >= 0) {
+                espacios[indiceEdicion] = registro;
+                indiceEdicion = -1;
+            } else {
+                espacios.push(registro);
+            }
+
+            guardarBorradorLocal();
             actualizarLista();
-            
+            limpiarFormulario();
+        }
+
+        function limpiarFormulario() {
             document.getElementById('nombreInput').value = "";
             document.getElementById('medidaInput').value = "";
             document.getElementById('obsInput').value = "";
             document.getElementById('ubicacionManual').value = "";
-            document.getElementById('fotoInput').value = "";
-            document.getElementById('preview-foto').style.display = "none";
-            fotoActualBase64 = "";
-            alert("✅ Espacio guardado");
+            document.getElementById('ubicacionInput').value = "Muro";
+            document.getElementById('divManual').style.display = "none";
+            descartarFotoActual();
+            indiceEdicion = -1;
+            document.getElementById('btnGuardarEspacio').innerText = "✅ GUARDAR ESTE ESPACIO";
+            document.getElementById('btnCancelarEdicion').style.display = "none";
+            document.getElementById('titulo-paso1').innerText = "PASO 1 y 2: Fotografía y Datos de la Zona";
+        }
+
+        function editarEspacio(index) {
+            const esp = espacios[index];
+            indiceEdicion = index;
+            document.getElementById('nombreInput').value = esp.nombre;
+            document.getElementById('medidaInput').value = esp.medida;
+            document.getElementById('obsInput').value = esp.obs || "";
+
+            const opcionesEstandar = ["Muro", "Fachada", "Columna / Viga", "Losa / Techo", "Piso"];
+            if (opcionesEstandar.includes(esp.ubicacion)) {
+                document.getElementById('ubicacionInput').value = esp.ubicacion;
+                document.getElementById('divManual').style.display = "none";
+            } else {
+                document.getElementById('ubicacionInput').value = "MANUAL";
+                document.getElementById('divManual').style.display = "block";
+                document.getElementById('ubicacionManual').value = esp.ubicacion;
+            }
+
+            fotoActualBase64 = esp.foto;
+            document.getElementById('preview-foto').src = fotoActualBase64;
+            document.getElementById('preview-container').style.display = 'block';
+
+            document.getElementById('btnGuardarEspacio').innerText = "💾 GUARDAR CAMBIOS DE ESTA ZONA";
+            document.getElementById('btnCancelarEdicion').style.display = "block";
+            document.getElementById('titulo-paso1').innerText = `✏️ Editando Zona #${index + 1}`;
+            document.getElementById('formulario-card').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function eliminarEspacio(index) {
+            if (confirm(`¿Seguro que deseas eliminar la zona "${espacios[index].nombre}"?`)) {
+                espacios.splice(index, 1);
+                guardarBorradorLocal();
+                actualizarLista();
+            }
         }
 
         function actualizarLista() {
             const div = document.getElementById('lista-cuartos');
-            document.getElementById('contador').innerText = `Zonas guardadas: ${espacios.length}`;
+            document.getElementById('contador').innerText = `Zonas registradas: ${espacios.length}`;
             div.innerHTML = "";
             espacios.forEach((esp, index) => {
                 div.innerHTML += `
-                    <div class="cuarto-guardado">
+                    <div class="cuarto-guardado clearfix">
+                        <img src="${esp.foto}" class="mini-thumb" alt="Miniatura">
                         <strong>${index + 1}. ${esp.nombre}</strong><br>
-                        📍 ${esp.ubicacion} | 📏 ${esp.medida}
+                        <span>📍 ${esp.ubicacion} | 📏 ${esp.medida}</span><br>
+                        <small style="color:#475569;">${esp.obs ? '📝 ' + esp.obs : 'Sin observaciones adicionales'}</small><br>
+                        <button type="button" class="btn btn-blue btn-small" onclick="editarEspacio(${index})">✏️ Editar / Cambiar foto</button>
+                        <button type="button" class="btn btn-red btn-small" onclick="eliminarEspacio(${index})">🗑️ Borrar</button>
                     </div>
                 `;
             });
         }
 
-        function generarPDF() {
-            const proyecto = document.getElementById('proyectoInput').value;
-            const inspector = document.getElementById('inspectorInput').value;
+        function guardarBorradorLocal() {
+            const data = {
+                proyecto: document.getElementById('proyectoInput').value,
+                inspector: document.getElementById('inspectorInput').value,
+                espacios: espacios
+            };
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+            } catch (e) {
+                console.warn('Almacenamiento local lleno:', e);
+            }
+        }
 
-            if (!proyecto.trim() || !inspector.trim() || espacios.length === 0) {
-                alert("⚠️ Completa los datos finales y agrega al menos una foto.");
+        function cargarBorradorLocal() {
+            const guardado = localStorage.getItem(STORAGE_KEY);
+            if (!guardado) return;
+            try {
+                const data = JSON.parse(guardado);
+                document.getElementById('proyectoInput').value = data.proyecto || "";
+                document.getElementById('inspectorInput').value = data.inspector || "";
+                espacios = data.espacios || [];
+                actualizarLista();
+            } catch (e) {
+                console.error('Error cargando borrador:', e);
+            }
+        }
+
+        function reiniciarInformeCompleto() {
+            if (confirm("¿Deseas borrar todas las zonas guardadas para iniciar un informe nuevo desde cero?")) {
+                espacios = [];
+                document.getElementById('proyectoInput').value = "";
+                localStorage.removeItem(STORAGE_KEY);
+                actualizarLista();
+                limpiarFormulario();
+            }
+        }
+
+        function generarPDF() {
+            const proyecto = document.getElementById('proyectoInput').value.trim();
+            const inspector = document.getElementById('inspectorInput').value.trim();
+
+            if (!proyecto || !inspector || espacios.length === 0) {
+                alert("⚠️ Completa el nombre del Proyecto, el Inspector y registra al menos una zona.");
                 return;
             }
 
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
             
+            doc.setFillColor(30, 58, 138);
+            doc.rect(0, 0, 210, 28, 'F');
+            doc.setTextColor(255, 255, 255);
             doc.setFontSize(16);
-            doc.text("INFORME TECNICO DE INSPECCION", 105, 20, null, null, "center");
+            doc.text("CIVILCHECK PRO - INFORME TECNICO DE INSPECCION", 105, 17, null, null, "center");
+
+            doc.setTextColor(30, 41, 59);
             doc.setFontSize(11);
-            doc.text(`Proyecto: ${proyecto}`, 15, 35);
-            doc.text(`Inspector: ${inspector}`, 15, 42);
-            doc.text(`Fecha: ${new Date().toLocaleDateString()}`, 15, 49);
+            doc.text(`Proyecto / Inmueble: ${proyecto}`, 15, 38);
+            doc.text(`Inspector Responsable: ${inspector}`, 15, 45);
+            doc.text(`Fecha de Emision: ${new Date().toLocaleDateString()}`, 15, 52);
+            doc.line(15, 56, 195, 56);
 
             let y = 65;
 
             espacios.forEach((esp, index) => {
-                if (y > 200) { doc.addPage(); y = 20; }
-                
+                if (y > 185) {
+                    doc.addPage();
+                    y = 20;
+                }
                 doc.setFontSize(12);
-                doc.text(`Zona #${index + 1}: ${esp.nombre} (${esp.ubicacion})`, 15, y);
-                doc.setFontSize(10);
-                doc.text(`Medida: ${esp.medida}`, 15, y + 6);
-                if (esp.obs) doc.text(`Obs: ${esp.obs}`, 15, y + 12);
+                doc.setTextColor(30, 58, 138);
+                doc.text(`Registro #${index + 1}: ${esp.nombre} (${esp.ubicacion})`, 15, y);
                 
-                doc.addImage(esp.foto, 'JPEG', 15, y + 16, 120, 90);
-                y += 115;
+                doc.setFontSize(10);
+                doc.setTextColor(30, 41, 59);
+                doc.text(`Medida / Magnitud: ${esp.medida}`, 15, y + 7);
+                
+                if (esp.obs) {
+                    const lineasObs = doc.splitTextToSize(`Observaciones: ${esp.obs}`, 180);
+                    doc.text(lineasObs, 15, y + 14);
+                    y += (lineasObs.length * 5);
+                }
+
+                doc.addImage(esp.foto, 'JPEG', 15, y + 16, 125, 88);
+                y += 114;
             });
 
-            doc.save(`Informe_${proyecto.replace(/ /g, "_")}.pdf`);
-            alert("🎉 PDF descargado en tu celular.");
-            espacios = [];
-            actualizarLista();
+            const nombreArchivo = `Informe_${proyecto.replace(/[^a-zA-Z0-9]/g, "_")}.pdf`;
+            doc.save(nombreArchivo);
         }
     </script>
 </body>
