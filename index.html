@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" translate="no">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -29,8 +29,19 @@
             padding: 20px;
             border-radius: 12px;
             text-align: center;
-            margin-bottom: 20px;
+            margin-bottom: 18px;
             box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+        }
+        .barra-usuario {
+            background: #ffffff;
+            border: 1px solid #cbd5e1;
+            padding: 10px 15px;
+            border-radius: 10px;
+            margin-bottom: 18px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 14px;
         }
         .card {
             background: white;
@@ -47,6 +58,26 @@
             border-radius: 8px;
             font-weight: bold;
             margin-bottom: 15px;
+        }
+        .tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+        .tab-btn {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #cbd5e1;
+            background: #f8fafc;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            color: #334155;
+        }
+        .tab-btn.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
         }
         label {
             font-weight: bold;
@@ -86,6 +117,7 @@
             display: inline-block;
             margin-right: 6px;
             margin-top: 8px;
+            margin-bottom: 0;
         }
         #preview-container {
             display: none;
@@ -125,79 +157,202 @@
 
     <div class="banner">
         <h1 style="margin:0;">🏗️ CivilCheck Pro</h1>
-        <p style="margin:5px 0 0 0;">Modo 100% Campo (Autoguardado Offline)</p>
+        <p style="margin:5px 0 0 0;">Sistema de Inspección Técnica (Modo 100% Campo Offline)</p>
     </div>
 
-    <div class="card" id="formulario-card">
-        <div class="paso-titulo" id="titulo-paso1">PASO 1 y 2: Fotografía y Datos de la Zona</div>
-        
-        <label>📷 1. Tomar o Seleccionar Fotografía *</label>
-        <input type="file" id="fotoInput" accept="image/*" capture="environment">
-        
-        <div id="preview-container">
-            <img id="preview-foto" alt="Vista previa de inspección">
-            <button type="button" class="btn btn-orange" onclick="descartarFotoActual()">🔄 Volver a tomar / Cambiar foto</button>
+    <!-- PANTALLA DE ACCESO (LOGIN Y CREAR CUENTA) -->
+    <div id="seccion-login" class="card">
+        <div class="paso-titulo">🔐 Control de Acceso al Sistema</div>
+        <div class="tabs">
+            <button type="button" class="tab-btn active" id="tabBtnLogin" onclick="cambiarTabAcceso('login')">🔑 Iniciar Sesión</button>
+            <button type="button" class="tab-btn" id="tabBtnRegistro" onclick="cambiarTabAcceso('registro')">➕ Crear Cuenta Nueva</button>
         </div>
 
-        <label>2. Nombre del lugar o ambiente *</label>
-        <input type="text" id="nombreInput" placeholder="Ej: Sala, Habitación Principal, Sótano 1">
-
-        <label>3. Longitud, espesor o medida *</label>
-        <input type="text" id="medidaInput" placeholder="Ej: Fisura de 1.50 m x 2 mm">
-
-        <label>4. Elemento / Ubicación *</label>
-        <select id="ubicacionInput">
-            <option value="Muro">Muro</option>
-            <option value="Fachada">Fachada</option>
-            <option value="Columna / Viga">Columna / Viga</option>
-            <option value="Losa / Techo">Losa / Techo</option>
-            <option value="Piso">Piso</option>
-            <option value="MANUAL">✍️ Escribir manualmente...</option>
-        </select>
-        
-        <div id="divManual" style="display:none;">
-            <label>Especificar ubicación manual *</label>
-            <input type="text" id="ubicacionManual" placeholder="Ej: Balcón Norte, Escalera de emergencia">
+        <!-- Formulario Iniciar Sesión -->
+        <div id="form-login">
+            <label>👤 Usuario *</label>
+            <input type="text" id="loginUsuario" value="admin" placeholder="Ingresa tu usuario">
+            <label>🔒 Contraseña *</label>
+            <input type="password" id="loginClave" value="1234" placeholder="Ingresa tu contraseña">
+            <button type="button" class="btn btn-blue" onclick="iniciarSesion()">🚀 Entrar a la Plataforma</button>
         </div>
 
-        <label>5. Diagnóstico y observaciones técnicas</label>
-        <textarea id="obsInput" rows="3" placeholder="Ej: Presencia de eflorescencia y humedad activa..."></textarea>
-
-        <button type="button" class="btn btn-blue" id="btnGuardarEspacio" onclick="guardarEspacio()">✅ GUARDAR ESTE ESPACIO</button>
-        <button type="button" class="btn btn-orange" id="btnCancelarEdicion" style="display:none;" onclick="limpiarFormulario()">❌ Cancelar Edición</button>
+        <!-- Formulario Crear Cuenta -->
+        <div id="form-registro" style="display:none;">
+            <label>👷 Nombre Completo (Aparecerá en el PDF) *</label>
+            <input type="text" id="regNombre" placeholder="Ej: Ing. Camilo Marimón">
+            <label>👤 Nuevo Nombre de Usuario *</label>
+            <input type="text" id="regUsuario" placeholder="Ej: camilo2">
+            <label>🔒 Crear Contraseña *</label>
+            <input type="password" id="regClave" placeholder="Escribe tu contraseña">
+            <button type="button" class="btn btn-green" onclick="registrarCuenta()">✨ Guardar Cuenta y Entrar Ahora</button>
+        </div>
     </div>
 
-    <div class="card">
-        <div class="paso-titulo">PASO 3: Revisión y Generación de Informe PDF</div>
-        
-        <label>🏢 Proyecto / Edificio / Vivienda *</label>
-        <input type="text" id="proyectoInput" placeholder="Ej: Edificio Mirador - Apto 402" oninput="guardarBorradorLocal()">
-        
-        <label>👷 Ingeniero / Inspector *</label>
-        <input type="text" id="inspectorInput" placeholder="Tu nombre completo" oninput="guardarBorradorLocal()">
+    <!-- APLICACIÓN PRINCIPAL (OCULTA HASTA INICIAR SESIÓN) -->
+    <div id="seccion-app" style="display:none;">
+        <div class="barra-usuario">
+            <span id="textoUsuarioActivo">👷 Inspector: <strong></strong></span>
+            <button type="button" class="btn btn-red btn-small" onclick="cerrarSesion()">🔒 Cerrar Sesión</button>
+        </div>
 
-        <p id="contador" style="font-weight:bold; color:#1e3a8a;">Zonas registradas: 0</p>
-        <div id="lista-cuartos"></div>
+        <div class="card" id="formulario-card">
+            <div class="paso-titulo" id="titulo-paso1">PASO 1: Evidencia Fotográfica</div>
+            <label>📷 Tomar o Seleccionar Fotografía *</label>
+            <input type="file" id="fotoInput" accept="image/*" capture="environment">
+            
+            <div id="preview-container">
+                <img id="preview-foto" alt="Vista previa de inspección">
+                <button type="button" class="btn btn-orange" onclick="descartarFotoActual()">🔄 Volver a tomar / Cambiar foto</button>
+            </div>
 
-        <button type="button" class="btn btn-green" onclick="generarPDF()">📄 DESCARGAR INFORME PDF</button>
-        <button type="button" class="btn btn-red" onclick="reiniciarInformeCompleto()">🗑️ Limpiar y empezar informe desde cero</button>
+            <div class="paso-titulo" style="margin-top:15px;">PASO 2: Datos del Espacio</div>
+            <label>1️⃣ Nombre del lugar *</label>
+            <input type="text" id="nombreInput" placeholder="Ej: Sala, Habitación Principal">
+
+            <label>2️⃣ Longitud o medida *</label>
+            <input type="text" id="medidaInput" placeholder="Ej: 1.50 m">
+
+            <label>3️⃣ Fachada / Ubicación *</label>
+            <select id="ubicacionInput">
+                <option value="Muro">Muro</option>
+                <option value="Fachada">Fachada</option>
+                <option value="Columna / Viga">Columna / Viga</option>
+                <option value="Losa / Techo">Losa / Techo</option>
+                <option value="Piso">Piso</option>
+                <option value="MANUAL">✍️ Escribir manualmente...</option>
+            </select>
+            
+            <div id="divManual" style="display:none;">
+                <label>Ubicación manual *</label>
+                <input type="text" id="ubicacionManual" placeholder="Ej: Balcón, Escalera...">
+            </div>
+
+            <label>4️⃣ Observaciones (Opcional)</label>
+            <textarea id="obsInput" rows="3" placeholder="Humedad, tipo de fisura..."></textarea>
+
+            <button type="button" class="btn btn-blue" id="btnGuardarEspacio" onclick="guardarEspacio()">✅ GUARDAR ESTE ESPACIO</button>
+            <button type="button" class="btn btn-orange" id="btnCancelarEdicion" style="display:none;" onclick="limpiarFormulario()">❌ Cancelar Edición</button>
+        </div>
+
+        <div class="card">
+            <div class="paso-titulo">PASO 3: Revisión y Descarga de PDF</div>
+            <p id="contador" style="font-weight:bold; color:#1e3a8a;">Zonas guardadas: 0</p>
+            <div id="lista-cuartos"></div>
+            
+            <label>🏢 Casa / Edificio *</label>
+            <input type="text" id="proyectoInput" placeholder="Ej: Casa Familia Pérez" oninput="guardarBorradorLocal()">
+            
+            <label>👷 Inspector Responsable *</label>
+            <input type="text" id="inspectorInput" placeholder="Tu nombre completo" oninput="guardarBorradorLocal()">
+
+            <button type="button" class="btn btn-green" onclick="generarPDF()">📄 DESCARGAR INFORME PDF</button>
+            <button type="button" class="btn btn-red" onclick="reiniciarInformeCompleto()">🗑️ Limpiar y empezar informe desde cero</button>
+        </div>
     </div>
 
     <script>
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('./sw.js')
-                .then(() => console.log('Service Worker activo para modo offline'))
-                .catch(err => console.error('Error registrando Service Worker:', err));
+                .then(() => console.log('Modo Offline Activo'))
+                .catch(err => console.error('Error SW:', err));
         }
 
+        const USERS_KEY = 'civilcheck_usuarios_v1';
+        const SESSION_KEY = 'civilcheck_sesion_activa_v1';
         const STORAGE_KEY = 'civilcheck_borrador_v1';
+
         let espacios = [];
         let fotoActualBase64 = "";
         let indiceEdicion = -1;
 
         window.addEventListener('DOMContentLoaded', () => {
+            inicializarUsuariosPorDefecto();
+            verificarSesionActiva();
             cargarBorradorLocal();
         });
+
+        function inicializarUsuariosPorDefecto() {
+            let usuarios = {};
+            try {
+                usuarios = JSON.parse(localStorage.getItem(USERS_KEY)) || {};
+            } catch (e) {
+                usuarios = {};
+            }
+            if (!usuarios['admin']) {
+                usuarios['admin'] = { clave: '1234', nombre: 'Administrador' };
+                localStorage.setItem(USERS_KEY, JSON.stringify(usuarios));
+            }
+        }
+
+        function cambiarTabAcceso(modo) {
+            if (modo === 'login') {
+                document.getElementById('form-login').style.display = 'block';
+                document.getElementById('form-registro').style.display = 'none';
+                document.getElementById('tabBtnLogin').classList.add('active');
+                document.getElementById('tabBtnRegistro').classList.remove('active');
+            } else {
+                document.getElementById('form-login').style.display = 'none';
+                document.getElementById('form-registro').style.display = 'block';
+                document.getElementById('tabBtnLogin').classList.remove('active');
+                document.getElementById('tabBtnRegistro').classList.add('active');
+            }
+        }
+
+        function iniciarSesion() {
+            const usr = document.getElementById('loginUsuario').value.trim().toLowerCase();
+            const pwd = document.getElementById('loginClave').value.trim();
+            const usuarios = JSON.parse(localStorage.getItem(USERS_KEY)) || {};
+
+            if (usuarios[usr] && usuarios[usr].clave === pwd) {
+                const sesion = { usuario: usr, nombre: usuarios[usr].nombre };
+                localStorage.setItem(SESSION_KEY, JSON.stringify(sesion));
+                verificarSesionActiva();
+            } else {
+                alert("⚠️ Usuario o contraseña incorrectos.");
+            }
+        }
+
+        function registrarCuenta() {
+            const nombre = document.getElementById('regNombre').value.trim();
+            const usr = document.getElementById('regUsuario').value.trim().toLowerCase();
+            const pwd = document.getElementById('regClave').value.trim();
+
+            if (!nombre || !usr || !pwd) {
+                alert("⚠️ Por favor completa tu nombre, usuario y contraseña.");
+                return;
+            }
+
+            const usuarios = JSON.parse(localStorage.getItem(USERS_KEY)) || {};
+            usuarios[usr] = { clave: pwd, nombre: nombre };
+            localStorage.setItem(USERS_KEY, JSON.stringify(usuarios));
+
+            const sesion = { usuario: usr, nombre: nombre };
+            localStorage.setItem(SESSION_KEY, JSON.stringify(sesion));
+            verificarSesionActiva();
+        }
+
+        function verificarSesionActiva() {
+            const sesionGuardada = localStorage.getItem(SESSION_KEY);
+            if (sesionGuardada) {
+                const sesion = JSON.parse(sesionGuardada);
+                document.getElementById('seccion-login').style.display = 'none';
+                document.getElementById('seccion-app').style.display = 'block';
+                document.getElementById('textoUsuarioActivo').innerHTML = `👷 Usuario activo: <strong>${sesion.nombre} (${sesion.usuario})</strong>`;
+                const inspectorInput = document.getElementById('inspectorInput');
+                if (!inspectorInput.value.trim()) {
+                    inspectorInput.value = sesion.nombre;
+                }
+            } else {
+                document.getElementById('seccion-login').style.display = 'block';
+                document.getElementById('seccion-app').style.display = 'none';
+            }
+        }
+
+        function cerrarSesion() {
+            localStorage.removeItem(SESSION_KEY);
+            verificarSesionActiva();
+        }
 
         document.getElementById('ubicacionInput').addEventListener('change', function(e) {
             document.getElementById('divManual').style.display = (e.target.value === "MANUAL") ? 'block' : 'none';
@@ -251,13 +406,13 @@
             if (ubicacion === "MANUAL") {
                 ubicacion = document.getElementById('ubicacionManual').value.trim();
                 if (!ubicacion) {
-                    alert("⚠️ Por favor escribe la ubicación manual.");
+                    alert("⚠️ Escribe la ubicación manual.");
                     return;
                 }
             }
 
             if (!fotoActualBase64 || !nombre || !medida) {
-                alert("⚠️ Debes tomar la fotografía y completar el nombre del lugar y la medida.");
+                alert("⚠️ Falta la fotografía, el nombre del lugar o la medida.");
                 return;
             }
 
@@ -286,7 +441,7 @@
             indiceEdicion = -1;
             document.getElementById('btnGuardarEspacio').innerText = "✅ GUARDAR ESTE ESPACIO";
             document.getElementById('btnCancelarEdicion').style.display = "none";
-            document.getElementById('titulo-paso1').innerText = "PASO 1 y 2: Fotografía y Datos de la Zona";
+            document.getElementById('titulo-paso1').innerText = "PASO 1: Evidencia Fotográfica";
         }
 
         function editarEspacio(index) {
@@ -326,7 +481,7 @@
 
         function actualizarLista() {
             const div = document.getElementById('lista-cuartos');
-            document.getElementById('contador').innerText = `Zonas registradas: ${espacios.length}`;
+            document.getElementById('contador').innerText = `Zonas guardadas: ${espacios.length}`;
             div.innerHTML = "";
             espacios.forEach((esp, index) => {
                 div.innerHTML += `
@@ -334,7 +489,7 @@
                         <img src="${esp.foto}" class="mini-thumb" alt="Miniatura">
                         <strong>${index + 1}. ${esp.nombre}</strong><br>
                         <span>📍 ${esp.ubicacion} | 📏 ${esp.medida}</span><br>
-                        <small style="color:#475569;">${esp.obs ? '📝 ' + esp.obs : 'Sin observaciones adicionales'}</small><br>
+                        <small style="color:#475569;">${esp.obs ? '📝 ' + esp.obs : 'Sin observaciones'}</small><br>
                         <button type="button" class="btn btn-blue btn-small" onclick="editarEspacio(${index})">✏️ Editar / Cambiar foto</button>
                         <button type="button" class="btn btn-red btn-small" onclick="eliminarEspacio(${index})">🗑️ Borrar</button>
                     </div>
@@ -351,7 +506,7 @@
             try {
                 localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
             } catch (e) {
-                console.warn('Almacenamiento local lleno:', e);
+                console.warn('Almacenamiento lleno:', e);
             }
         }
 
@@ -361,7 +516,9 @@
             try {
                 const data = JSON.parse(guardado);
                 document.getElementById('proyectoInput').value = data.proyecto || "";
-                document.getElementById('inspectorInput').value = data.inspector || "";
+                if (data.inspector) {
+                    document.getElementById('inspectorInput').value = data.inspector;
+                }
                 espacios = data.espacios || [];
                 actualizarLista();
             } catch (e) {
@@ -370,7 +527,7 @@
         }
 
         function reiniciarInformeCompleto() {
-            if (confirm("¿Deseas borrar todas las zonas guardadas para iniciar un informe nuevo desde cero?")) {
+            if (confirm("¿Deseas borrar todas las zonas actuales para empezar un informe nuevo desde cero?")) {
                 espacios = [];
                 document.getElementById('proyectoInput').value = "";
                 localStorage.removeItem(STORAGE_KEY);
@@ -384,7 +541,7 @@
             const inspector = document.getElementById('inspectorInput').value.trim();
 
             if (!proyecto || !inspector || espacios.length === 0) {
-                alert("⚠️ Completa el nombre del Proyecto, el Inspector y registra al menos una zona.");
+                alert("⚠️ Completa el nombre de la Casa/Edificio, el Inspector y guarda al menos una zona.");
                 return;
             }
 
@@ -413,11 +570,11 @@
                 }
                 doc.setFontSize(12);
                 doc.setTextColor(30, 58, 138);
-                doc.text(`Registro #${index + 1}: ${esp.nombre} (${esp.ubicacion})`, 15, y);
+                doc.text(`Zona #${index + 1}: ${esp.nombre} (${esp.ubicacion})`, 15, y);
                 
                 doc.setFontSize(10);
                 doc.setTextColor(30, 41, 59);
-                doc.text(`Medida / Magnitud: ${esp.medida}`, 15, y + 7);
+                doc.text(`Medida: ${esp.medida}`, 15, y + 7);
                 
                 if (esp.obs) {
                     const lineasObs = doc.splitTextToSize(`Observaciones: ${esp.obs}`, 180);
@@ -431,6 +588,7 @@
 
             const nombreArchivo = `Informe_${proyecto.replace(/[^a-zA-Z0-9]/g, "_")}.pdf`;
             doc.save(nombreArchivo);
+            alert("🎉 PDF descargado en tu celular.");
         }
     </script>
 </body>
